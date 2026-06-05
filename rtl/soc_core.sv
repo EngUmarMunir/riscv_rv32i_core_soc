@@ -43,7 +43,7 @@ data_mem dmem (
 // =====================
 // RV32I Core
 // =====================
-riscv_top cpu (
+core cpu (
     .clk         (clk),
     .rest        (rest),
 

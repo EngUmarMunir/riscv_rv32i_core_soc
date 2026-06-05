@@ -1,74 +1,86 @@
 `timescale 1ns/1ps
 
-module riscv_tb;
+module soc_core_tb;
 
-    logic clk;
-    logic rest;
 
-    int cycle_count;
-    int error_count;
+// Clock & Reset
+logic clk;
+logic rest;
 
-    core dut (
-        .clk  (clk),
-        .rest (rest)
-    );
+// Counters
+int cycle_count;
+int error_count;
 
-    // Clock generation
-    initial clk = 1'b0;
-    always #5 clk = ~clk;
+// DUT
+soc_core dut (
+    .clk  (clk),
+    .rest (rest)
+);
 
-    // Reset
-    initial begin
-        rest = 1'b1;
-        cycle_count = 0;
-        error_count = 0;
+// Clock Generation (100MHz)
+initial clk = 0;
+always #5 clk = ~clk;
 
-        #20;
-        rest = 1'b0;
+// Reset Sequence
+initial begin
+    rest = 1;
+    #20;
+    rest = 0;
+    $display("[%0t] Reset released", $time);
+end
 
-        $display("[%0t] Reset released", $time);
+// Main Monitor Block (SINGLE DRIVER BLOCK)
+always_ff @(posedge clk) begin
+    if (rest) begin
+        cycle_count <= 0;
+        error_count <= 0;
     end
+    else begin
+        cycle_count <= cycle_count + 1;
 
-    // Basic runtime checks
-    always_ff @(posedge clk) begin
-        if (!rest) begin
-            cycle_count++;
+        $display("Cycle=%0d | PC=0x%08h | Instr=0x%08h",
+                 cycle_count,
+                 dut.pc_out,
+                 dut.instruction);
 
-            $display("Cycle=%0d | PC=0x%08h | Instr=0x%08h",
-                     cycle_count,
-                     dut.pc_out,
-                     dut.instruction);
+        // Check 1: Unknown PC
+        if ($isunknown(dut.pc_out)) begin
+            $display("ERROR: Unknown PC at cycle %0d", cycle_count);
+            error_count <= error_count + 1;
+        end
 
-            if ($isunknown(dut.pc_out)) begin
-                $display("ERROR: Unknown PC at cycle %0d", cycle_count);
-                error_count++;
-            end
+        // Check 2: Unknown Instruction
+        if ($isunknown(dut.instruction)) begin
+            $display("ERROR: Unknown instruction at cycle %0d", cycle_count);
+            error_count <= error_count + 1;
+        end
 
-            if ($isunknown(dut.instruction)) begin
-                $display("ERROR: Unknown instruction at cycle %0d", cycle_count);
-                error_count++;
-            end
-
-            if (dut.pc_out[1:0] != 2'b00) begin
-                $display("ERROR: Misaligned PC at cycle %0d | PC=0x%08h",
-                         cycle_count, dut.pc_out);
-                error_count++;
-            end
+        // Check 3: Misaligned PC
+        if (dut.pc_out[1:0] != 2'b00) begin
+            $display("ERROR: Misaligned PC at cycle %0d | PC=0x%08h",
+                     cycle_count, dut.pc_out);
+            error_count <= error_count + 1;
         end
     end
+end
 
-    // Finish simulation
-    initial begin
-        #3000;
+// End Simulation
+initial begin
+    #3000;
 
-        $display("\n==============================");
-        $display("Simulation Summary");
-        $display("Total Cycles : %0d", cycle_count);
-        $display("Total Errors : %0d", error_count);
-        $display("%s", error_count == 0 ? "TEST PASSED" : "TEST FAILED");
-        $display("==============================\n");
+    $display("\n=================================");
+    $display("         SIMULATION SUMMARY      ");
+    $display("=================================");
+    $display("Total Cycles : %0d", cycle_count);
+    $display("Total Errors : %0d", error_count);
 
-        $finish;
-    end
+    if (error_count == 0)
+        $display("TEST PASSED");
+    else
+        $display("TEST FAILED");
 
+    $display("=================================\n");
+
+    $finish;
+end
 endmodule
