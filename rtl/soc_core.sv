@@ -5,47 +5,55 @@ module soc_core (
     input logic rest
 );
 
+// =====================
+// CPU <-> Instruction Memory
+// =====================
 logic [31:0] pc_out;
 logic [31:0] instruction;
 
+// =====================
+// CPU <-> Data Memory
+// =====================
 logic [31:0] data_addr;
 logic [31:0] data_w;
 logic [31:0] mem_data;
 logic        MemWrite;
 
 // =====================
-// CPU CORE
+// Instruction Memory
 // =====================
-core cpu (
-    .clk(clk),
-    .rest(rest),
-
-    .instruction(instruction),
-    .mem_data(mem_data),
-
-    .pc_out(pc_out),
-    .data_addr(data_addr),
-    .data_w(data_w),
-    .MemWrite(MemWrite)
+inst_mem imem (
+    .read_addr (pc_out),
+    .inst_out  (instruction)
 );
 
 // =====================
-// INSTRUCTION MEMORY
-// =====================
-instr_mem imem (
-    .A(pc_out),
-    .RD(instruction)
-);
-
-// =====================
-// DATA MEMORY
+// Data Memory
 // =====================
 data_mem dmem (
-    .clk(clk),
-    .we(MemWrite),
-    .A(data_addr),
-    .WD(data_w),
-    .RD(mem_data)
+    .clk          (clk),
+    .rest         (rest),
+    .addr         (data_addr),
+    .data_w       (data_w),
+    .mem_write_en (MemWrite),
+    .MemRead      (1'b1),
+    .data_r       (mem_data)
+);
+
+// =====================
+// RV32I Core
+// =====================
+riscv_top cpu (
+    .clk         (clk),
+    .rest        (rest),
+
+    .instruction (instruction),
+    .pc_out      (pc_out),
+
+    .mem_data    (mem_data),
+    .data_addr   (data_addr),
+    .data_w      (data_w),
+    .MemWrite    (MemWrite)
 );
 
 endmodule
