@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module riscv_top (
+module core (
     input  logic        clk,
     input  logic        rest,
 
@@ -37,6 +37,7 @@ logic branch_taken;
 
 logic [31:0] alu_src_a, alu_src_b;
 
+// LSU
 logic [31:0] lsu_load_data;
 logic [31:0] lsu_store_data;
 logic [3:0]  lsu_funct;
